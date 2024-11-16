@@ -15,8 +15,8 @@ const int pinAR = 4;
 const int pinBR = 5;
 const int pinEncR = 6;
 
-// Motor leftMotor(D35, D6, D5);
-// Motor rightMotor(D29, D11, D24);
+Motor leftMotor(pinAL, pinBL, pinEncL);
+Motor rightMotor(pinAR, pinBR, pinEncR);
 
 // TwoWire(pinSDA, pinSCL)
 const int pinSDA = 19;
