@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ToF Sensor Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="heatmap1" style="width:600px;height:400px;"></div>
+    <div id="heatmap2" style="width:600px;height:400px;"></div>
+    <div id="pointcloud" style="width:800px;height:600px;"></div>
+
+    <script>
+        function updateData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    // Create heatmaps for raw sensor data
+                    const heatmap1 = {
+                        z: data.current.tof1,
+                        type: 'heatmap',
+                        colorscale: 'Viridis'
+                    };
+                    
+                    const heatmap2 = {
+                        z: data.current.tof2,
+                        type: 'heatmap',
+                        colorscale: 'Viridis'
+                    };
+
+                    // Create 3D scatter plot for point cloud
+                    const pointcloud = {
+                        type: 'scatter3d',
+                        mode: 'markers',
+                        x: data.current.x,
+                        y: data.current.y,
+                        z: data.current.z,
+                        marker: {
+                            size: 2,
+                            color: 'rgb(0,100,255)'
+                        }
+                    };
+
+                    Plotly.newPlot('heatmap1', [heatmap1]);
+                    Plotly.newPlot('heatmap2', [heatmap2]);
+                    Plotly.newPlot('pointcloud', [pointcloud], {
+                        scene: {
+                            aspectmode: 'cube'
+                        }
+                    });
+                });
+        }
+
+        // Update every 100ms
+        setInterval(updateData, 500);
+    </script>
+</body>
+</html>

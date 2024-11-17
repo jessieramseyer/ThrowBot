@@ -152,3 +152,42 @@ void motorControlTask(void* param) {
     vTaskDelay(100 / portTICK_PERIOD_MS); // Delay 100ms
   }
 }
+
+// Task: Handle WASD Movement Control
+void handleWASDControl(void* param) {
+  while (true) {
+    char movement = 'x'; // Default no movement
+    
+    // Get movement command from web server
+    // Note: You'll need to implement the actual web server endpoint 
+    // that sets this movement variable
+
+    switch(movement) {
+      case 'W': // Forward
+      case 'w':
+        forward(100, 100);
+        break;
+        
+      case 'S': // Backward  
+      case 's':
+        backward(100, 100);
+        break;
+        
+      case 'A': // Turn Left
+      case 'a':
+        spinCCW(80, 80);
+        break;
+        
+      case 'D': // Turn Right
+      case 'd':
+        spinCW(80, 80);
+        break;
+        
+      default: // Stop
+        coast();
+        break;
+    }
+
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Check input every 50ms
+  }
+}
