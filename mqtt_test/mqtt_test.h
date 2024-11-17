@@ -6,7 +6,7 @@
 #include <LittleFS.h>
 
 #include <Wire.h>
-// #include "motor.h"
+#include "motor.h"
 #include "tof.h"
 #include <mutex>
 
@@ -18,8 +18,8 @@ using namespace std::chrono_literals;
 constexpr uint32_t I2C_FREQ = 400000;
 // 1470 for the slowest motors
 
-// extern Motor leftMotor;
-// extern Motor rightMotor;
+extern Motor leftMotor;
+extern Motor rightMotor;
 extern TwoWire i2c;
 extern std::mutex i2cLock;
 // extern VL53L5CX_ResultsData tofData;

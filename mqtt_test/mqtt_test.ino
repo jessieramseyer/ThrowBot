@@ -8,6 +8,17 @@ const int pinSCL = 18;
 TwoWire i2c = TwoWire(0);
 std::mutex i2cLock;
 
+// Motor(pinA, pinB, pinEncoder);
+const int pinAL = 7;
+const int pinBL = 8;
+const int pinSleepL = 9;
+const int pinAR = 4;
+const int pinBR = 5;
+const int pinSleepR = 6;
+
+// Motor leftMotor(pinAL, pinBL, 0, pinSleepL);
+// Motor rightMotor(pinAR, pinBR, 0, pinSleepR);
+
 // WiFi
 const char *ssid = "165KingWest"; // Enter your Wi-Fi name
 const char *password = "165Budds";  // Enter Wi-Fi password
@@ -57,13 +68,16 @@ void callback(char *topic, byte *payload, unsigned int length) {
 }
 
 void loop() {
-    client.loop();
-    // digitalWrite(4, HIGH);
-    // digitalWrite(5, LOW);
-    // delay(5000);
-    // digitalWrite(4, LOW);
-    // digitalWrite(5, LOW);
-    // delay(1000);
+    // client.loop();
+    Serial.println("motors should turn on");
+
+    digitalWrite(6, HIGH);
+    analogWrite(4, 100);
+    analogWrite(5, 0);
+    delay(2000);
+    analogWrite(4, 0);
+    analogWrite(5, 0);
+    delay(5000);
 }
 
 // Task: Read ToF Sensor Data
@@ -71,13 +85,37 @@ void tof1Task(void* param) {
   while (true) {
     getTof();
     tofDataLock.lock();
+    // uint8_t randomData[64] = [];
+    // String jsonData = "[";
+    // for (int i = 0; i < 32; i++) {
+    //     if (i > 0) jsonData += ",";
+    //     // Reduce range to 0-255 to keep numbers smaller
+    //     // randomData[i] = random(0, 255);
+    //     jsonData += String(tofData.distance_mm[i]);
+    // }
+    // jsonData += "]";
+
+    int randomData[64];
+    // Use a more compact format without spaces and minimal separators
     String jsonData = "[";
     for (int i = 0; i < 64; i++) {
         if (i > 0) jsonData += ",";
         // Reduce range to 0-255 to keep numbers smaller
-        jsonData += String(tofData.distance_mm[i]);
+        randomData[i] = random(0, 255);
+        jsonData += String(randomData[i]);
     }
     jsonData += "]";
+
+    int randomData2[64];
+    // Use a more compact format without spaces and minimal separators
+    String jsonData2 = "[";
+    for (int i = 0; i < 64; i++) {
+        if (i > 0) jsonData2 += ",";
+        // Reduce range to 0-255 to keep numbers smaller
+        randomData2[i] = random(0, 255);
+        jsonData2 += String(randomData2[i]);
+    }
+    jsonData2 += "]";
     
     // Check if client is still connected before publishing
     if (!client.connected()) {
@@ -91,6 +129,7 @@ void tof1Task(void* param) {
     
     // Attempt to publish and check result
     int publishResult = client.publish(tof_data_topic1, jsonData.c_str());
+    int publishResult2 = client.publish(tof_data_topic2, jsonData2.c_str());
     if (publishResult) {
         Serial.println("Published successfully");
         Serial.println(jsonData); // Print the data being sent
@@ -104,7 +143,7 @@ void tof1Task(void* param) {
   }
 }
 
-void setup() {
+void setup1() {
     // Set software serial baud to 115200;
     
     Serial.begin(115200);
@@ -129,31 +168,70 @@ void setup() {
     delay(1000);
     // }
     
+    setupMotor1();
+    setupMotor2();
+    // coast();
+}
 
-    Wire.beginTransmission(0x31);
-    Wire.write(0x0C);
-    Wire.write(0x03);
-    Wire.endTransmission();
-    Wire.beginTransmission(0x31);
-    Wire.write(0x09);
-    Wire.write(0xC2);
-    Wire.endTransmission();
-    Wire.beginTransmission(0x31);
-    Wire.write(0x0D);
-    Wire.write(0x18);
-    Wire.endTransmission();
-    Wire.beginTransmission(0x31);
-    Wire.write(0x00);
-    Wire.endTransmission();
-    Wire.requestFrom(0x31, 1);    // request 1 byte from device with ID 0x20
-    while(Wire.available()) {     // device may send less than requested (abnormal)
-      char c = Wire.read();       // receive a byte
+void setupMotor1() {
+    i2c.beginTransmission(0x31);
+    i2c.write(0x0C);
+    i2c.write(0x03);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x31);
+    i2c.write(0x09);
+    i2c.write(0xC2);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x31);
+    i2c.write(0x0D);
+    i2c.write(0x18);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x31);
+    i2c.write(0x00);
+    i2c.endTransmission();
+    i2c.requestFrom(0x31, 1);    // request 1 byte from device with ID 0x20
+    while(i2c.available()) {     // device may send less than requested (abnormal)
+      char c = i2c.read();       // receive a byte
       Serial.println(c, HEX);     // print the character in hexadecimal
     }
 
-    pinMode(5, OUTPUT);
+    pinMode(7, OUTPUT);
+    pinMode(8, OUTPUT);
+    pinMode(9, OUTPUT);
+    delay(500);
+    digitalWrite(9, HIGH);
+    // rightMotor.begin();
+    // delay(500);
+    // rightMotor.enable();
+}
+
+void setupMotor2() {
+    i2c.beginTransmission(0x34);
+    i2c.write(0x0C);
+    i2c.write(0x03);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x34);
+    i2c.write(0x09);
+    i2c.write(0xC2);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x34);
+    i2c.write(0x0D);
+    i2c.write(0x18);
+    i2c.endTransmission();
+    i2c.beginTransmission(0x34);
+    i2c.write(0x00);
+    i2c.endTransmission();
+    i2c.requestFrom(0x34, 1);    // request 1 byte from device with ID 0x20
+    while(i2c.available()) {     // device may send less than requested (abnormal)
+      char c = i2c.read();       // receive a byte
+      Serial.println(c, HEX);     // print the character in hexadecimal
+    }
     pinMode(4, OUTPUT);
+    pinMode(5, OUTPUT);
     pinMode(6, OUTPUT);
+    // leftMotor.begin();
+    delay(500);
+    // leftMotor.enable();
     digitalWrite(6, HIGH);
 }
 
@@ -194,7 +272,7 @@ void setup() {
 //   }
 // }
 
-void setup1() {
+void setup() {
     // Set software serial baud to 115200;
     Serial.begin(115200);
     // Connecting to a WiFi network
@@ -212,12 +290,15 @@ void setup1() {
     client.setCallback(callback);
     connectToMqtt();
     
-    client.subscribe(wasd_topic);
+    // client.subscribe(wasd_topic);
 
     i2c.begin(pinSDA, pinSCL);
-    i2c.setClock(I2C_FREQ);
 
     initToF();
+
+    setupMotor1();
+    setupMotor2();
+    // coast();
 
     // Create task to publish TOF data
     TaskHandle_t tofTaskHandle = nullptr;
