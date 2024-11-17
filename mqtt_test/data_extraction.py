@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 # Global variables for storing sensor data
 sensor_data = {
-    'tof1': np.zeros((8, 8)),
-    'tof2': np.zeros((8, 8)), 
+    'tof1': np.zeros((6,8)),
+    'tof2': np.zeros((6,8)), 
 }
 data_lock = Lock()
 history_buffer = deque(maxlen=100)  # Store last 100 measurements
@@ -20,7 +20,7 @@ def on_message(client, userdata, msg):
     try:
         # Parse the incoming data (assuming JSON format)
         data = json.loads(msg.payload.decode())
-        data_array = np.array(data).reshape(8, 8)
+        data_array = np.array(data).reshape(6,8)
         
         with data_lock:
             if msg.topic == mqtt_client.TOF1_TOPIC:
@@ -41,7 +41,7 @@ def process_sensor_data():
     """Convert raw sensor data into 3D point cloud"""
     point_cloud = []
     
-    for i in range(8):
+    for i in range(6):
         for j in range(8):
             # Sensor 1 data
             dist1 = float(sensor_data['tof1'][i][j])  # Convert to native Python float

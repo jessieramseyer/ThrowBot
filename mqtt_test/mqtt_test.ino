@@ -71,12 +71,12 @@ void loop() {
     // client.loop();
     Serial.println("motors should turn on");
 
-    digitalWrite(6, HIGH);
-    analogWrite(4, 100);
-    analogWrite(5, 0);
+    digitalWrite(9, HIGH);
+    analogWrite(7, 100);
+    analogWrite(8, 0);
     delay(2000);
-    analogWrite(4, 0);
-    analogWrite(5, 0);
+    analogWrite(7, 0);
+    analogWrite(8, 0);
     delay(5000);
 }
 
@@ -85,34 +85,35 @@ void tof1Task(void* param) {
   while (true) {
     getTof();
     tofDataLock.lock();
-    // uint8_t randomData[64] = [];
-    // String jsonData = "[";
-    // for (int i = 0; i < 32; i++) {
-    //     if (i > 0) jsonData += ",";
-    //     // Reduce range to 0-255 to keep numbers smaller
-    //     // randomData[i] = random(0, 255);
-    //     jsonData += String(tofData.distance_mm[i]);
-    // }
-    // jsonData += "]";
-
-    int randomData[64];
-    // Use a more compact format without spaces and minimal separators
     String jsonData = "[";
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 48; i++) {
         if (i > 0) jsonData += ",";
-        // Reduce range to 0-255 to keep numbers smaller
-        randomData[i] = random(0, 255);
-        jsonData += String(randomData[i]);
+        if (i < 48) {
+            jsonData += String(tofData.distance_mm[i]);
+        } else {
+            jsonData += "0";
+        }
     }
     jsonData += "]";
 
-    int randomData2[64];
+    // int randomData[64];
+    // // Use a more compact format without spaces and minimal separators
+    // String jsonData = "[";
+    // for (int i = 0; i < 64; i++) {
+    //     if (i > 0) jsonData += ",";
+    //     // Reduce range to 0-255 to keep numbers smaller
+    //     randomData[i] = random(0, 255);
+    //     jsonData += String(randomData[i]);
+    // }
+    // jsonData += "]";
+
+    int randomData2[48];
     // Use a more compact format without spaces and minimal separators
     String jsonData2 = "[";
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 48; i++) {
         if (i > 0) jsonData2 += ",";
         // Reduce range to 0-255 to keep numbers smaller
-        randomData2[i] = random(0, 255);
+        randomData2[i] = 0;
         jsonData2 += String(randomData2[i]);
     }
     jsonData2 += "]";
