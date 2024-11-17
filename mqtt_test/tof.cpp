@@ -10,7 +10,7 @@ float tofNormalized[64] = {0};
 int tofMatch = -1;
 
 void initToF() {
-  if (!tof.begin(0x52 >> 1, i2c)) {
+  if (!tof.begin(0x29, i2c)) {
     Serial.println("tough luck. tof not found");
     while (1);
   }

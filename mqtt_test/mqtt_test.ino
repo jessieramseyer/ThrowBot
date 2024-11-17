@@ -58,22 +58,24 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
 void loop() {
     client.loop();
+    // digitalWrite(4, HIGH);
+    // digitalWrite(5, LOW);
+    // delay(5000);
+    // digitalWrite(4, LOW);
+    // digitalWrite(5, LOW);
+    // delay(1000);
 }
 
 // Task: Read ToF Sensor Data
-void tofTask(void* param) {
+void tof1Task(void* param) {
   while (true) {
-    // tofDataLock.lock();
-    // getTof();
-    // Generate random 8x8 array of values between 0-1000
-    int randomData[64];
-    // Use a more compact format without spaces and minimal separators
+    getTof();
+    tofDataLock.lock();
     String jsonData = "[";
     for (int i = 0; i < 64; i++) {
         if (i > 0) jsonData += ",";
         // Reduce range to 0-255 to keep numbers smaller
-        randomData[i] = random(0, 255);
-        jsonData += String(randomData[i]);
+        jsonData += String(tofData.distance_mm[i]);
     }
     jsonData += "]";
     
@@ -89,7 +91,6 @@ void tofTask(void* param) {
     
     // Attempt to publish and check result
     int publishResult = client.publish(tof_data_topic1, jsonData.c_str());
-    int publishResult2 = client.publish(tof_data_topic2, jsonData.c_str());
     if (publishResult) {
         Serial.println("Published successfully");
         Serial.println(jsonData); // Print the data being sent
@@ -98,12 +99,102 @@ void tofTask(void* param) {
         Serial.println(publishResult);
     }
     
-    // tofDataLock.unlock();
+    tofDataLock.unlock();
     vTaskDelay(500 / portTICK_PERIOD_MS); // Delay 500ms
   }
 }
 
 void setup() {
+    // Set software serial baud to 115200;
+    
+    Serial.begin(115200);
+    while(!Serial);
+    // Set up I2C
+    Wire.begin(pinSDA, pinSCL);
+    // i2c.setClock(I2C_FREQ);
+
+    // Scan I2C address space
+    // while(true){
+    Serial.println("Scanning I2C address space...");
+    for (byte address = 1; address < 127; address++) {
+        Wire.beginTransmission(address);
+        byte error = Wire.endTransmission();
+        
+        if (error == 0) {
+            Serial.print("I2C device found at address 0x");
+            Serial.println(address, HEX);
+        }
+    }
+    Serial.println("I2C scan complete");
+    delay(1000);
+    // }
+    
+
+    Wire.beginTransmission(0x31);
+    Wire.write(0x0C);
+    Wire.write(0x03);
+    Wire.endTransmission();
+    Wire.beginTransmission(0x31);
+    Wire.write(0x09);
+    Wire.write(0xC2);
+    Wire.endTransmission();
+    Wire.beginTransmission(0x31);
+    Wire.write(0x0D);
+    Wire.write(0x18);
+    Wire.endTransmission();
+    Wire.beginTransmission(0x31);
+    Wire.write(0x00);
+    Wire.endTransmission();
+    Wire.requestFrom(0x31, 1);    // request 1 byte from device with ID 0x20
+    while(Wire.available()) {     // device may send less than requested (abnormal)
+      char c = Wire.read();       // receive a byte
+      Serial.println(c, HEX);     // print the character in hexadecimal
+    }
+
+    pinMode(5, OUTPUT);
+    pinMode(4, OUTPUT);
+    pinMode(6, OUTPUT);
+    digitalWrite(6, HIGH);
+}
+
+// void tof2Task(void* param) {
+//   while (true) {
+//     tof2DataLock.lock();
+//     getTof();
+//     String jsonData = "[";
+//     for (int i = 0; i < 64; i++) {
+//         if (i > 0) jsonData += ",";
+//         // Reduce range to 0-255 to keep numbers smaller
+//         jsonData += String(tofData2.distance_mm[i]);
+//     }
+//     jsonData += "]";
+    
+//     // Check if client is still connected before publishing
+//     if (!client.connected()) {
+//         Serial.println("MQTT client disconnected, attempting to reconnect...");
+//         if (connectToMqtt()) {
+//             Serial.println("Reconnected successfully");
+//         } else {
+//             Serial.println("Failed to reconnect");
+//         }
+//     }
+    
+//     // Attempt to publish and check result
+//     int publishResult = client.publish(tof_data_topic2, jsonData.c_str());
+//     if (publishResult) {
+//         Serial.println("Published successfully");
+//         Serial.println(jsonData); // Print the data being sent
+//     } else {
+//         Serial.print("Failed to publish. Error code: ");
+//         Serial.println(publishResult);
+//     }
+    
+//     tof2DataLock.unlock();
+//     vTaskDelay(500 / portTICK_PERIOD_MS); // Delay 500ms
+//   }
+// }
+
+void setup1() {
     // Set software serial baud to 115200;
     Serial.begin(115200);
     // Connecting to a WiFi network
@@ -130,7 +221,7 @@ void setup() {
 
     // Create task to publish TOF data
     TaskHandle_t tofTaskHandle = nullptr;
-    xTaskCreate(tofTask, "ToF Task", 4096, nullptr, 2, &tofTaskHandle);
+    xTaskCreate(tof1Task, "ToF Task", 4096, nullptr, 2, &tofTaskHandle);
     if (tofTaskHandle == nullptr) {
         Serial.println("Failed to create ToF task");
     } else {
