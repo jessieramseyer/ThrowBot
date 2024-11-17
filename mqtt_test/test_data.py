@@ -6,8 +6,8 @@ import time
 try:
     while True:
         # Generate random 8x8 arrays for both sensors
-        tof1_data = np.random.randint(0, 1000, (8, 8)).tolist()
-        tof2_data = np.random.randint(0, 1000, (8, 8)).tolist()
+        tof1_data = np.random.randint(0, 1000, (64)).tolist()
+        tof2_data = np.random.randint(0, 1000, (64)).tolist()
         
         # Publish data using the centralized client
         mqtt_client.publish(mqtt_client.TOF1_TOPIC, json.dumps(tof1_data))
