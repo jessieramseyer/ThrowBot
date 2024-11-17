@@ -1,9 +1,5 @@
 #include "motor.h"
 
-inline bool closeTo(float a, float b) {
-  return fabs(a-b) < 3e-1;
-}
-
 int target_turn_pwm = 19;
 // General PID used to match encoder ticks from both motors to get it to drive straight
 double pid_setpoint, pid_output, pid_input;
@@ -11,25 +7,37 @@ double Kp, Ki, Kd;
 PID straightDrivePID(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
 uint8_t leftpwm, rightpwm;
 
-Motor::Motor(int pinA, int pinB, int encoderPin): pinA(pinA), pinB(pinB), encoderPin(encoderPin), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
+Motor::Motor(int pinA, int pinB, int encoderPin, int sleepPin): pinA(pinA), pinB(pinB), encoderPin(encoderPin), sleepPin(sleepPin), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
 
 void Motor::begin() {
-  ledcAttach(pinA, 5000, 8);
-  ledcAttach(pinB, 5000, 8);
-  pinMode(encoderPin, INPUT);
-  pidController.SetOutputLimits(0, 255-target_turn_pwm);
-  pidController.SetMode(AUTOMATIC);
+  pinMode(pinA, OUTPUT);
+  pinMode(pinB, OUTPUT);
+  pinMode(sleepPin, OUTPUT);
+  // pinMode(encoderPin, INPUT);
+  // configure LEDC PWM
+  ledcAttachChannel(pinA, 5000, 8, 0);
+  // configure LEDC PWM
+  ledcAttachChannel(pinB, 5000, 8, 0);
+  // pidController.SetOutputLimits(0, 255-target_turn_pwm);
+  // pidController.SetMode(AUTOMATIC);
+}
+
+void Motor::enable() {
+  digitalWrite(sleepPin, HIGH);
+}
+
+void Motor::disable() {
+  digitalWrite(sleepPin, LOW);
 }
 
 void Motor::rotateCW(uint8_t pwm) {
   ledcWrite(pinA, pwm);
   ledcWrite(pinB, 0);
-  direction = CW;
 }
 
 void Motor::rotateCCW(uint8_t pwm) {
-  ledcWrite(pinA, 0);
-  ledcWrite(pinB, pwm);
+  analogWrite(pinA, 0);
+  analogWrite(pinB, pwm);
 }
 
 void Motor::coast() {
@@ -38,15 +46,23 @@ void Motor::coast() {
 }
 
 void Motor::activeBreak() {
-  ledcWrite(pinA, 255);
-  ledcWrite(pinB, 255);
+  analogWrite(pinA, 255);
+  analogWrite(pinB, 255);
 }
 
 void Motor::encoderUpdate() {
   // CW increments and CCW decrements
-  bool val = digitalRead(encoderPin);
-  encoder += direction * (val ^ encMem);
-  encMem = val;
+  // read from i2c
+  uint16_t value = 0;
+  i2cLock.lock();
+  i2c.beginTransmission(encoderPin); // Use encoderPin as I2C address
+  i2c.requestFrom(encoderPin, 2);    // Request 2 bytes
+  if (i2c.available()) {
+    value = i2c.read();          // Read high byte
+    encoder = (value << 8) | i2c.read(); // Read low byte
+  }
+  i2c.endTransmission();
+  i2cLock.unlock();
 }
 
 void Motor::calculateSpeed() { // uses rolling average filter
@@ -81,7 +97,6 @@ void Motor::calculateSpeed() { // uses rolling average filter
 void updateBothEncoders() {
   leftMotor.encoderUpdate();
   rightMotor.encoderUpdate();
-  delay(1);
 }
 
 static void updateRightEncoder() {
@@ -90,11 +105,6 @@ static void updateRightEncoder() {
 
 static void updateLeftEncoder() {
   leftMotor.encoderUpdate();
-}
-
-void registerEncoderISRs() {
-  attachInterrupt(digitalPinToInterrupt(leftMotor.encoderPin), updateLeftEncoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateRightEncoder, RISING);
 }
 
 void forward(uint8_t pwmL, uint8_t pwmR){

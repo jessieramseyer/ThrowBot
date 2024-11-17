@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <cmath>
 #include <Arduino.h>
+#include <mutex>
+#include <Wire.h>
 
 enum Direction {
   CW = 1,
@@ -29,13 +31,14 @@ public:
   const int pinA;
   const int pinB;
   const int encoderPin;
+  const int sleepPin;
   Direction direction;
 
   // TODO: if the PID gain terms aren't dynamic, make them constexpr
   double Kp=40, Ki=1.0, Kd=1.0;
   double lastEncoderCount = 0;
 
-  Motor(int pinA, int pinB, int encoderPin);
+  Motor(int pinA, int pinB, int encoderPin, int sleepPin);
   void begin();
   void rotateCW(uint8_t);
   void rotateCCW(uint8_t);
@@ -45,6 +48,8 @@ public:
   void encoderUpdate();
   void calculateSpeed();
   void controlSpeed();
+  void enable();
+  void disable();
   double Setpoint, Output;
 
   PID pidController; // Leaving this here as we decide which PID to use
@@ -67,7 +72,6 @@ extern Motor leftMotor;
 
 void spinCCW(uint8_t pwmL, uint8_t pwmR);
 void spinCW(uint8_t pwmL, uint8_t pwmR);
-void registerEncoderISRs();
 void forward(uint8_t pwmL, uint8_t pwmR);
 void backward(uint8_t pwmL, uint8_t pwmR);
 void coast();
@@ -76,5 +80,9 @@ void calculateMotorSpeeds();
 void controlMotorSpeedsForTurning();
 void TurnInPlaceByNumDegrees(float degrees);
 void driveStraight();
+void updateBothEncoders();
+
+extern std::mutex i2cLock;
+extern TwoWire i2c; 
 
 #endif // MOTOR_H

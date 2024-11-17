@@ -10,13 +10,13 @@ AsyncWebServer server(80);
 // Motor(pinA, pinB, pinEncoder);
 const int pinAL = 7;
 const int pinBL = 8;
-const int pinEncL = 9;
+const int pinSleepL = 9;
 const int pinAR = 4;
 const int pinBR = 5;
-const int pinEncR = 6;
+const int pinSleepR = 6;
 
-Motor leftMotor(pinAL, pinBL, pinEncL);
-Motor rightMotor(pinAR, pinBR, pinEncR);
+Motor leftMotor(pinAL, pinBL, 0, pinSleepL);
+Motor rightMotor(pinAR, pinBR, 0, pinSleepR);
 
 // TwoWire(pinSDA, pinSCL)
 const int pinSDA = 19;
@@ -43,6 +43,12 @@ void printBufBytes(const T* const buf, uint8_t len) {
 }
 
 void setup() {
+  rightMotor.begin();
+  delay(1000);
+  rightMotor.enable();
+}
+
+void setup1() {
 
   Serial.begin(115200);
   while(!Serial);
@@ -52,6 +58,11 @@ void setup() {
   i2c.setClock(I2C_FREQ);
 
   initToF();
+
+  // Start tasks
+  xTaskCreate(tofTask, "ToF Task", 4096, nullptr, 2, nullptr);
+  xTaskCreate(encoderTask, "Encoder Task", 4096, nullptr, 2, nullptr);
+  xTaskCreate(motorControlTask, "Motor Control Task", 4096, nullptr, 1, nullptr);
 
   // Initialize LittleFS
   if(!LittleFS.begin()){
@@ -88,41 +99,56 @@ void setup() {
   // Start server
   server.begin();
 
-  // Start periodic ToF reading
-if (xTaskCreate([](void*) {
-      while (true) {
-          getTof();
-          delay(500); // Update data every 500ms
-      }
-  }, 
-  "ToFReader", // Task name
-  4096,        // Stack size
-  nullptr,     // Task parameters
-  1,           // Task priority
-  nullptr      // Task handle
-) != pdPASS) {
-    Serial.println("Failed to create ToF reader task");
-}
-
-  // leftMotor.begin();
-  // rightMotor.begin();
-  // coast();
-  // registerEncoderISRs();
-
-  // motorEncTask.start(updateBothEncoders); // polling update
-  // motorSpeedTask.start(calculateMotorSpeeds);
-  // tofInputTask.start(readToF);
-  // debugPrinter.start(printDebugMsgs);
-
-  // straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
-  // straightDrivePID.SetMode(AUTOMATIC);
-
-  // wait for initial measurements to come through
-  delay(200);
-  // Serial.println("all systems go");
-
+  leftMotor.begin();
+  rightMotor.begin();
+  delay(1000);
+  rightMotor.enable();
+  leftMotor.enable();
+  coast();
 }
 
 void loop() {
-  delay(500);
+  rightMotor.rotateCW(80);
+  delay(3000);
+  rightMotor.coast();
+  delay(1000);
+}
+
+// Task: Read ToF Sensor Data
+void tofTask(void* param) {
+  while (true) {
+    tofDataLock.lock();
+    getTof();
+    tofDataLock.unlock();
+    vTaskDelay(500 / portTICK_PERIOD_MS); // Delay 500ms
+  }
+}
+
+// Task: Read Encoder Data
+void encoderTask(void* param) {
+  while (true) {
+    updateBothEncoders();
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Delay 50ms
+  }
+}
+
+// Task: Motor Control Logic
+void motorControlTask(void* param) {
+  while (true) {
+
+    tofDataLock.lock();
+    uint16_t currentTofData[64];
+    memcpy(currentTofData, tofData.distance_mm, 64);
+    tofDataLock.unlock();
+
+    if (currentTofData[0] < 300) { // Obstacle detected
+      leftMotor.coast();
+      rightMotor.coast();
+    } else {
+      leftMotor.rotateCW(100);
+      rightMotor.rotateCW(100);
+    }
+
+    vTaskDelay(100 / portTICK_PERIOD_MS); // Delay 100ms
+  }
 }
